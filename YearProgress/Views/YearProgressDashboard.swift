@@ -17,14 +17,8 @@ struct YearProgressDashboard: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(verbatim: "\(snapshot.year) Progress")
-                .font(.system(.largeTitle, design: .rounded, weight: .bold))
-
-            Text(selectedMode.unitDescription)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-        }
+        Text(verbatim: "\(snapshot.year) Progress")
+            .font(.system(.largeTitle, design: .rounded, weight: .bold))
     }
 
     private var modePicker: some View {

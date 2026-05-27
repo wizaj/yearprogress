@@ -20,17 +20,4 @@ enum ProgressMode: String, CaseIterable, Identifiable {
             "Quarters"
         }
     }
-
-    var unitDescription: String {
-        switch self {
-        case .day:
-            "One mark per day of the year"
-        case .week:
-            "Local calendar weeks for this year"
-        case .month:
-            "One row per month"
-        case .quarter:
-            "One row per quarter"
-        }
-    }
 }

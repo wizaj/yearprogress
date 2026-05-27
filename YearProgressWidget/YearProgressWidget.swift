@@ -31,31 +31,59 @@ enum YearProgressWidgetMode: String, AppEnum {
     }
 }
 
+enum YearProgressWidgetAppearance: String, AppEnum {
+    case auto
+    case light
+    case dark
+
+    static var typeDisplayRepresentation: TypeDisplayRepresentation = "Appearance"
+
+    static var caseDisplayRepresentations: [YearProgressWidgetAppearance: DisplayRepresentation] = [
+        .auto: "Auto",
+        .light: "Light",
+        .dark: "Dark"
+    ]
+
+    var colorSchemeOverride: ColorScheme? {
+        switch self {
+        case .auto: nil
+        case .light: .light
+        case .dark: .dark
+        }
+    }
+}
+
 struct YearProgressWidgetConfiguration: WidgetConfigurationIntent {
     static var title: LocalizedStringResource = "Year Progress"
-    static var description = IntentDescription("Choose the progress view shown by the widget.")
+    static var description = IntentDescription("Choose the progress view and appearance shown by the widget.")
 
-    @Parameter(title: "View")
-    var mode: YearProgressWidgetMode
+    @Parameter(title: "View", default: .quarter)
+    var mode: YearProgressWidgetMode?
 
-    init() {
-        mode = .quarter
-    }
+    @Parameter(title: "Appearance", default: .auto)
+    var appearance: YearProgressWidgetAppearance?
+
+    init() {}
 }
 
 struct YearProgressWidgetEntry: TimelineEntry {
     let date: Date
     let snapshot: YearProgressSnapshot
     let mode: YearProgressWidgetMode
+    let appearance: YearProgressWidgetAppearance
 }
 
 struct YearProgressWidgetProvider: AppIntentTimelineProvider {
     func placeholder(in context: Context) -> YearProgressWidgetEntry {
-        entry(for: Date(), mode: .quarter)
+        entry(for: Date(), mode: .quarter, appearance: .auto)
     }
 
     func snapshot(for configuration: YearProgressWidgetConfiguration, in context: Context) async -> YearProgressWidgetEntry {
-        entry(for: Date(), mode: configuration.mode)
+        entry(
+            for: Date(),
+            mode: configuration.mode ?? .quarter,
+            appearance: configuration.appearance ?? .auto
+        )
     }
 
     func timeline(for configuration: YearProgressWidgetConfiguration, in context: Context) async -> Timeline<YearProgressWidgetEntry> {
@@ -63,16 +91,23 @@ struct YearProgressWidgetProvider: AppIntentTimelineProvider {
         let refreshDate = Calendar.current.date(byAdding: .minute, value: 30, to: now) ?? now.addingTimeInterval(1800)
 
         return Timeline(
-            entries: [entry(for: now, mode: configuration.mode)],
+            entries: [
+                entry(
+                    for: now,
+                    mode: configuration.mode ?? .quarter,
+                    appearance: configuration.appearance ?? .auto
+                )
+            ],
             policy: .after(refreshDate)
         )
     }
 
-    private func entry(for date: Date, mode: YearProgressWidgetMode) -> YearProgressWidgetEntry {
+    private func entry(for date: Date, mode: YearProgressWidgetMode, appearance: YearProgressWidgetAppearance) -> YearProgressWidgetEntry {
         YearProgressWidgetEntry(
             date: date,
             snapshot: YearProgressCalculator().snapshot(for: date),
-            mode: mode
+            mode: mode,
+            appearance: appearance
         )
     }
 }
@@ -88,6 +123,7 @@ struct YearProgressWidget: Widget {
         ) { entry in
             YearProgressWidgetView(entry: entry)
                 .containerBackground(.background, for: .widget)
+                .widgetAppearanceOverride(entry.appearance.colorSchemeOverride)
         }
         .configurationDisplayName("Year Progress")
         .description("Track the year by day, week, month, or quarter.")
@@ -209,11 +245,14 @@ private struct WidgetProgressBar: View {
         GeometryReader { proxy in
             ZStack(alignment: .leading) {
                 Capsule(style: .continuous)
-                    .fill(ProgressVisualStyle.trackGradient)
+                    .fill(ProgressVisualStyle.trackFill)
 
                 Capsule(style: .continuous)
-                    .fill(ProgressVisualStyle.fillGradient)
+                    .fill(ProgressVisualStyle.fillColor)
                     .frame(width: proxy.size.width * clampedFraction)
+
+                DiagonalStripes()
+                    .allowsHitTesting(false)
             }
         }
         .clipShape(Capsule(style: .continuous))
@@ -282,13 +321,25 @@ private struct WidgetMonthDayGrid: View {
     }
 }
 
+private extension View {
+    @ViewBuilder
+    func widgetAppearanceOverride(_ scheme: ColorScheme?) -> some View {
+        if let scheme {
+            environment(\.colorScheme, scheme)
+        } else {
+            self
+        }
+    }
+}
+
 struct YearProgressWidget_Previews: PreviewProvider {
     static var previews: some View {
         YearProgressWidgetView(
             entry: YearProgressWidgetEntry(
                 date: Date(),
                 snapshot: YearProgressCalculator().snapshot(for: Date()),
-                mode: .quarter
+                mode: .quarter,
+                appearance: .auto
             )
         )
         .previewContext(WidgetPreviewContext(family: .systemMedium))
